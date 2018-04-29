@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="ivasev.ru.images">
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.USE_CREDENTIALS" />
@@ -19,7 +20,6 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -29,10 +29,12 @@
                 <data android:scheme="yx415b22ca0af04265bbc99c8f6dea34b6" />
             </intent-filter>
         </activity>
+        <activity android:name=".YandexActivity" />
+        <activity android:name=".DetailActivity" />
 
-        <activity android:name=".YandexActivity"></activity>
-
-        <activity android:name=".DetailActivity"></activity>
+        <service
+            android:name=".LoadService"
+            android:exported="false"></service>
     </application>
 
 </manifest>

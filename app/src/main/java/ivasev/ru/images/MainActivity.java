@@ -3,46 +3,34 @@ package ivasev.ru.images;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.Environment;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.yandex.disk.rest.Credentials;
-import com.yandex.disk.rest.OkHttpClientFactory;
-import com.yandex.disk.rest.ResourcesArgs;
-import com.yandex.disk.rest.RestClient;
-import com.yandex.disk.rest.exceptions.ServerIOException;
-import com.yandex.disk.rest.json.Resource;
-import com.yandex.disk.rest.json.ResourceList;
-import com.yandex.disk.rest.retrofit.ErrorHandlerImpl;
-import com.yandex.disk.rest.retrofit.RequestInterceptorImpl;
 
-import java.io.IOException;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import ivasev.ru.images.include.CloudApi;
-import ivasev.ru.images.include.Image;
-import ivasev.ru.images.include.ResourceFile;
-import ivasev.ru.images.include.YandexApi;
-import retrofit.RestAdapter;
-import retrofit.client.OkClient;
+import ivasev.ru.images.include.*;
+import ivasev.ru.images.include.data.Image;
 
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private RecyclerView.LayoutManager layoutManager;
-    private CloudApi cloudApi;
-    private Credentials credentials;
 
 
     @Override
@@ -71,8 +59,9 @@ public class MainActivity extends AppCompatActivity {
 
         if (token != null) {
 
-            final List<Image> mImages = new ArrayList<>();
-
+            final List<ImageItem> mImages = new ArrayList<>();
+            TextView textView = findViewById(R.id.textView);
+            textView.setText(R.string.images_yandex);
             layoutManager = new GridLayoutManager(MainActivity.this, 2);
             recyclerView = findViewById(R.id.rv_images);
             recyclerView.setHasFixedSize(true);
@@ -81,58 +70,36 @@ public class MainActivity extends AppCompatActivity {
             recyclerView.setAdapter(adapter);
 
 
-            credentials = new Credentials("", token);
+            final List<ImageItem> mYandexImages = new ArrayList<>();
+            if (Tool.hasConnection(this)) {
 
-            cloudApi = new RestAdapter.Builder()
-                    .setClient(new OkClient(OkHttpClientFactory.makeClient()))
-                    .setEndpoint("https://cloud-api.yandex.net")
-                    .setRequestInterceptor(new RequestInterceptorImpl(credentials.getHeaders()))
-                    .setErrorHandler(new ErrorHandlerImpl())
-                    .build()
-                    .create(CloudApi.class);
-
-
-
-
-
-            final List<Image> mYandexImages = new ArrayList<>();
-            final String finalToken = token;
-            Thread myThready = new Thread(new Runnable()
-            {
-                public void run()
-                {
-                try {
-                    RestClient restClient = new RestClient(new Credentials("", finalToken));
-                    ResourcesArgs.Builder builder = new ResourcesArgs.Builder();
-                    builder.setMediaType("image");
-                    ResourcesArgs resourcesArgs = builder.build();
-                    ResourceList resourceList = restClient.getFlatResourceList(resourcesArgs);
-                    for (Iterator<Resource> i = resourceList.getItems().iterator(); i.hasNext();) {
-                        Resource item = i.next();
-                        if (item != null) {
-
-                            builder = new ResourcesArgs.Builder();
-                            builder.setPath(item.getPath().toString());
-                            resourcesArgs = builder.build();
-                            ResourceFile img = cloudApi.getResources(resourcesArgs.getPath(), resourcesArgs.getFields(),
-                                    resourcesArgs.getLimit(), resourcesArgs.getOffset(), resourcesArgs.getSort(), resourcesArgs.getPreviewSize(),
-                                    resourcesArgs.getPreviewCrop());
-                            mYandexImages.add(new Image(img.getFile(), img.getName()));
-                        }
+                Thread myThready = new Thread(new Runnable() {
+                    public void run() {
+                        mYandexImages.addAll(YandexApi.downloadImage(MainActivity.this));
                     }
-                } catch (IOException e) {
+                });
+                myThready.start();
+                try {
+                    myThready.join();
+                    adapter.setItems(mYandexImages);
+                    Intent intentMyIntentService = new Intent(this, LoadService.class);
+                    startService(intentMyIntentService);
+                } catch (InterruptedException e) {
                     e.printStackTrace();
-                } catch (ServerIOException e) {
-                    e.printStackTrace();
-            }
                 }
-            });
-            myThready.start();
-            try {
-                myThready.join();
+            } else {
+                textView.setText(R.string.images_disc);
+                List<Image> images = Image.getList(this, null, null, null);
+
+                for (Iterator<Image> i = images.iterator(); i.hasNext();) {
+                    Image item = i.next();
+
+                    if (item.local_path == "" || !(new File(item.local_path).exists()))
+                        continue;
+                    mYandexImages.add(new ImageItem(item.local_path, item.name));
+                }
+
                 adapter.setItems(mYandexImages);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         } else {
             intent = new Intent(MainActivity.this, YandexActivity.class);
@@ -155,15 +122,14 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(ImageGalleryAdapter.MyViewHolder holder, int position) {
 
-            Image image = mImages.get(position);
+            ImageItem image = mImages.get(position);
             ImageView imageView = holder.mPhotoImageView;
-
             Glide.with(mContext)
-                    .load(image.getUrl())
-                    .skipMemoryCache(true)
-                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                    .placeholder(R.drawable.ic_launcher_foreground)
-                    .into(imageView);
+                .load(image.getUrl())
+                .skipMemoryCache(true)
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .placeholder(R.drawable.ic_launcher_foreground)
+                .into(imageView);
         }
 
         @Override
@@ -186,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 int position = getAdapterPosition();
                 if(position != RecyclerView.NO_POSITION) {
-                    Image image = mImages.get(position);
+                    ImageItem image = mImages.get(position);
                     Intent intent = new Intent(mContext, DetailActivity.class);
                     intent.putExtra(DetailActivity.EXTRA_PHOTO, image);
                     startActivity(intent);
@@ -194,20 +160,20 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private List<Image> mImages;
+        private List<ImageItem> mImages;
         private Context mContext;
 
-        public ImageGalleryAdapter(Context context, List<Image> images) {
+        public ImageGalleryAdapter(Context context, List<ImageItem> images) {
             mContext = context;
             mImages = images;
         }
 
-        public void setItems(Collection<Image> images) {
+        public void setItems(Collection<ImageItem> images) {
             mImages.addAll(images);
             notifyDataSetChanged();
         }
 
-        public void setItem(Image image) {
+        public void setItem(ImageItem image) {
             mImages.add(image);
             notifyDataSetChanged();
         }

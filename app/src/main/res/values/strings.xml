@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">images</string>
+    <string name="images_yandex">Данные из яндекса</string>
+    <string name="images_disc">Сети нет. Cохраненные данные.</string>
 </resources>

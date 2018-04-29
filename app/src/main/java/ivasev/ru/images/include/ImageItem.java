@@ -3,30 +3,30 @@ package ivasev.ru.images.include;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-public class Image implements Parcelable {
+public class ImageItem implements Parcelable {
 
     private String file;
     private String name;
 
-    public Image(String url, String title) {
+    public ImageItem(String url, String title) {
         file = url;
         name = title;
     }
 
-    protected Image(Parcel in) {
+    protected ImageItem(Parcel in) {
         file = in.readString();
         name = in.readString();
     }
 
-    public static final Creator<Image> CREATOR = new Creator<Image>() {
+    public static final Creator<ImageItem> CREATOR = new Creator<ImageItem>() {
         @Override
-        public Image createFromParcel(Parcel in) {
-            return new Image(in);
+        public ImageItem createFromParcel(Parcel in) {
+            return new ImageItem(in);
         }
 
         @Override
-        public Image[] newArray(int size) {
-            return new Image[size];
+        public ImageItem[] newArray(int size) {
+            return new ImageItem[size];
         }
     };
 

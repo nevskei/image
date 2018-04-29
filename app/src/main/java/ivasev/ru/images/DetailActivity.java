@@ -8,7 +8,7 @@ import android.widget.ImageView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
-import ivasev.ru.images.include.Image;
+import ivasev.ru.images.include.*;
 
 public class DetailActivity extends AppCompatActivity {
 
@@ -21,7 +21,7 @@ public class DetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_photo_detail);
 
         mImageView = findViewById(R.id.image);
-        Image image = getIntent().getParcelableExtra(EXTRA_PHOTO);
+        ImageItem image = getIntent().getParcelableExtra(EXTRA_PHOTO);
         Glide.with(this)
                 .load(image.getUrl())
                 .asBitmap()
